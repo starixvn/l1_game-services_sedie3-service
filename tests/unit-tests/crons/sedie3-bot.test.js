@@ -1,13 +1,12 @@
 import Chance from "chance";
-import { stub, stubMongoose } from "jest-micro-auto-stub";
+import { stubMongoose } from "jest-micro-auto-stub";
 import mongoose from "mongoose";
-import { logger } from "sc-common";
 import { Table } from "sc-game-base";
 import { BaseEventPublisher } from "sc-game-base/src/core/event-publishers";
 import { TableGameBot } from "sc-game-base/src/table/crons";
 
 import constants from "../../../src/constants";
-import SedieBot from "../../../src/crons/sedie-bot";
+import SeDie3Bot from "../../../src/crons/sedie3-bot";
 import gameSettings from "../../../src/game-settings";
 import { generateResult, getSettlementResult } from "../../../src/helpers/result-helper";
 
@@ -15,13 +14,12 @@ const definition = new Table.TableGameDefinition(gameSettings, generateResult, g
 const gameData = new Table.TableGameData(gameSettings.durations.wholeRound, constants.resetTotalBets);
 gameData.gameConfigs = {
     choices_maxbet: {
-        even: 2000,
-        odd: 2000,
+        red: 2000,
+        white: 2000,
         red3: 1000,
         white3: 1000,
-        red4: 100,
-        white4: 100,
-        red2: 2000,
+        red2: 100,
+        red1: 100,
     },
     minbet: 1,
     bot_maxbet: 1000,
@@ -33,15 +31,6 @@ const userInfosRepository = stubMongoose(mongoose.Model);
 const tempBetsRepository = stubMongoose(mongoose.Model);
 const publisher = new BaseEventPublisher(definition.name, gameData);
 
-const tableSmartBot = {
-    registerRemoveAllBotEvent: jest.fn(),
-    registerPlaceBetEvent: jest.fn(),
-    registerAdjustBetEvent: jest.fn(),
-    onError: jest.fn(),
-    removeAll: jest.fn(),
-};
-const logService = stub(logger);
-
 const chance = new Chance();
 
 describe("SedieBot tests", () => {
@@ -50,19 +39,7 @@ describe("SedieBot tests", () => {
             // arrange
 
             // act
-            const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
-
-            // assert
-            expect(bot.allBets).toEqual(constants.resetTotalBets);
-        });
-    });
-
-    describe("when after initialize with smartbot", () => {
-        it("all bet amount of choices should be zero", () => {
-            // arrange
-
-            // act
-            const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository, tableSmartBot, logService);
+            const bot = new SeDie3Bot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
 
             // assert
             expect(bot.allBets).toEqual(constants.resetTotalBets);
@@ -72,7 +49,7 @@ describe("SedieBot tests", () => {
     describe("reset", () => {
         it("should call super.reset", async () => {
             // arrange
-            const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
+            const bot = new SeDie3Bot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
             jest.spyOn(TableGameBot.prototype, "reset");
 
             // act
@@ -86,7 +63,7 @@ describe("SedieBot tests", () => {
     describe("run", () => {
         it("should call super.run", async () => {
             // arrange
-            const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
+            const bot = new SeDie3Bot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
             jest.spyOn(TableGameBot.prototype, "run");
 
             // act
@@ -100,7 +77,7 @@ describe("SedieBot tests", () => {
     describe("resetAllBotData", () => {
         it("should call super.resetAllBotData", () => {
             // arrange
-            const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
+            const bot = new SeDie3Bot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
             jest.spyOn(TableGameBot.prototype, "resetAllBotData");
 
             // act
@@ -114,7 +91,7 @@ describe("SedieBot tests", () => {
     describe("resetInRoomTrackings", () => {
         it("should call userInfosRepository.updateMany", async () => {
             // arrange
-            const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
+            const bot = new SeDie3Bot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
             jest.spyOn(userInfosRepository, "updateMany");
 
             // act
@@ -131,7 +108,7 @@ describe("SedieBot tests", () => {
     describe("getAllBetAmount", () => {
         it("should return sum of bot bet amount", () => {
             // arrange
-            const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
+            const bot = new SeDie3Bot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
             let expected = 0;
 
             definition.choices.forEach((choice) => {
@@ -152,7 +129,7 @@ describe("SedieBot tests", () => {
         describe("when amount less than minBet * smallTicketValueRatio", () => {
             it("should return true", () => {
                 // arrange
-                const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
+                const bot = new SeDie3Bot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
                 const randomAmount = chance.integer({ min: bot.getMinBet(), max: bot.getMinBet() * bot.smallTicketValueRatio - 1 });
 
                 // act
@@ -166,7 +143,7 @@ describe("SedieBot tests", () => {
         describe("amount greater than minBet * smallTicketValueRatio", () => {
             it("should return false", () => {
                 // arrange
-                const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
+                const bot = new SeDie3Bot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
                 const randomAmount = chance.integer({
                     min: bot.getMinBet() * bot.smallTicketValueRatio,
                     max: gameData.gameConfigs.bot_maxbet,
@@ -184,7 +161,7 @@ describe("SedieBot tests", () => {
     describe("updateBotInRoomData test", () => {
         it("should call super.updateBotInRoomData", () => {
             // arrange
-            const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
+            const bot = new SeDie3Bot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
             jest.spyOn(TableGameBot.prototype, "updateBotInRoomData").mockImplementationOnce(jest.fn());
 
             // act
@@ -197,7 +174,7 @@ describe("SedieBot tests", () => {
         it("should update small tickets count", () => {
             // arrange
             jest.spyOn(TableGameBot.prototype, "updateBotInRoomData").mockImplementationOnce(jest.fn());
-            const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
+            const bot = new SeDie3Bot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
             const randomAmount = chance.integer({ min: bot.getMinBet(), max: bot.getMinBet() * bot.smallTicketValueRatio - 1 });
             const choice = chance.pickone(bot.mainOpts);
 
@@ -211,7 +188,7 @@ describe("SedieBot tests", () => {
         it("should update allBets", () => {
             // arrange
             jest.spyOn(TableGameBot.prototype, "updateBotInRoomData").mockImplementationOnce(jest.fn());
-            const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
+            const bot = new SeDie3Bot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
             const randomAmount = chance.integer({ min: bot.getMinBet(), max: bot.getMinBet() * bot.smallTicketValueRatio - 1 });
             const choice = chance.pickone(bot.mainOpts);
 
@@ -226,7 +203,7 @@ describe("SedieBot tests", () => {
     describe("convertAmountToChip test", () => {
         it("should return correct chip", () => {
             // arrange
-            const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
+            const bot = new SeDie3Bot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
 
             // act
             const chip = bot.convertAmountToChip(50);
@@ -237,7 +214,7 @@ describe("SedieBot tests", () => {
 
         it("should return correct chip if amount nearby", () => {
             // arrange
-            const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
+            const bot = new SeDie3Bot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
 
             // act
             const chip = bot.convertAmountToChip(70);
@@ -248,7 +225,7 @@ describe("SedieBot tests", () => {
 
         it("should return minBet if amount less than minBet", () => {
             // arrange
-            const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
+            const bot = new SeDie3Bot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
 
             // act
             const chip = bot.convertAmountToChip(0.5);
@@ -261,7 +238,7 @@ describe("SedieBot tests", () => {
     describe("getTotalBetAmount test", () => {
         it("should return correct amount", () => {
             // arrange
-            const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
+            const bot = new SeDie3Bot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
             const randomAmount = chance.integer({ min: bot.getMinBet(), max: bot.getMinBet() * bot.smallTicketValueRatio - 1 });
             const choice = chance.pickone(bot.mainOpts);
             const currentBet = constants.resetTotalBets;
@@ -279,7 +256,7 @@ describe("SedieBot tests", () => {
         describe("when not reach smallTicketRatio", () => {
             it("should return the max value of small ticket", () => {
                 // arrange
-                const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
+                const bot = new SeDie3Bot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
                 const betChoice = chance.pickone(bot.mainOpts);
 
                 // act
@@ -293,7 +270,7 @@ describe("SedieBot tests", () => {
         describe("when betChoice is mainOpts and already passed smallTicketRatio", () => {
             it("should return the lowest-valued between bot_maxbet and choice_maxbet ", () => {
                 // arrange
-                const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
+                const bot = new SeDie3Bot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
                 bot.smallTickets = 1;
                 bot.totalTickets = 1;
                 const betChoice = chance.pickone(bot.mainOpts);
@@ -309,7 +286,7 @@ describe("SedieBot tests", () => {
         describe("when betChoice is subOpts and passed smallTicketRatio", () => {
             it("should return totalBetAmount * subOptRatio ", () => {
                 // arrange
-                const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
+                const bot = new SeDie3Bot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
                 bot.smallTickets = 1;
                 bot.totalTickets = 1;
                 const totalBetAmount = 1000;
@@ -325,29 +302,10 @@ describe("SedieBot tests", () => {
             });
         });
 
-        describe("when betChoice is equalOpts and passed smallTicketRatio", () => {
-            it("should return totalBetAmount * equalOptRatio", () => {
-                // arrange
-                const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
-                bot.smallTickets = 1;
-                bot.totalTickets = 1;
-                const totalBetAmount = 1000;
-                const expected = (totalBetAmount * bot.betChoiceRatio.EqualOpts) / 100;
-                jest.spyOn(bot, "getAllBetAmount").mockReturnValueOnce(totalBetAmount);
-                const betChoice = chance.pickone(bot.equalOpts);
-
-                // act
-                const maxBet = bot.getMaxBet(null, betChoice);
-
-                // assert
-                expect(maxBet).toEqual(expected);
-            });
-        });
-
         describe("when betChoice is rareOpts and passed smallTicketRatio", () => {
             it("should return minBet * 10", () => {
                 // arrange
-                const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
+                const bot = new SeDie3Bot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
                 bot.smallTickets = 1;
                 bot.totalTickets = 1;
                 const totalBetAmount = 1000;
@@ -367,7 +325,7 @@ describe("SedieBot tests", () => {
     describe("getBetChoice test", () => {
         it("should return main choices when main choices have less than 90% bet amount", () => {
             // arrange
-            const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
+            const bot = new SeDie3Bot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
 
             // act
             const choice = bot.getBetChoice({ choices: [] });
@@ -380,7 +338,7 @@ describe("SedieBot tests", () => {
     describe("addToPlayersAndPublish test", () => {
         it("should add to players", () => {
             // arrange
-            const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
+            const bot = new SeDie3Bot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
             const botPlayer = { id: "23" };
             jest.spyOn(publisher, "publishToAllUsersExceptSystem");
 
@@ -393,7 +351,7 @@ describe("SedieBot tests", () => {
 
         it("should publish to all users", () => {
             // arrange
-            const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
+            const bot = new SeDie3Bot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
             const botPlayer = { id: "23" };
             jest.spyOn(publisher, "publishToAllUsersExceptSystem");
 
@@ -402,55 +360,6 @@ describe("SedieBot tests", () => {
 
             // assert
             expect(publisher.publishToAllUsersExceptSystem).toHaveBeenCalled();
-        });
-    });
-
-    describe("smartBotAfterPlacingBet test", () => {
-        it("should call super to update bets ", () => {
-            // arrange
-            const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
-            const botPlayer = { id: "23" };
-            gameData.players[botPlayer.id] = botPlayer;
-            jest.spyOn(TableGameBot.prototype, "updateTotalBetsAndChips");
-            jest.spyOn(TableGameBot.prototype, "updateBalanceAndPublishBetPayload");
-
-            // act
-            bot.smartBotAfterPlacingBet(botPlayer, chance.pickone(bot.equalOpts), 20, 1000);
-
-            // assert
-            expect(TableGameBot.prototype.updateTotalBetsAndChips).toHaveBeenCalled();
-        });
-
-        it("should  publish payload", () => {
-            // arrange
-            const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
-            const botPlayer = { id: "23" };
-            gameData.players[botPlayer.id] = botPlayer;
-            jest.spyOn(TableGameBot.prototype, "updateTotalBetsAndChips");
-            jest.spyOn(TableGameBot.prototype, "updateBalanceAndPublishBetPayload");
-
-            // act
-            bot.smartBotAfterPlacingBet(botPlayer, chance.pickone(bot.equalOpts), 20, 1000);
-
-            // assert
-            expect(TableGameBot.prototype.updateBalanceAndPublishBetPayload).toHaveBeenCalled();
-        });
-    });
-
-    describe("insertOrUpdateBetForSmartBot test", () => {
-        it("should call super.insertOrUpdateBet", async () => {
-            // arrange
-            const bot = new SedieBot(definition, gameData, publisher, userInfosRepository, tempBetsRepository);
-            const botPlayer = { id: "23" };
-            gameData.players[botPlayer.id] = botPlayer;
-            jest.spyOn(TableGameBot.prototype, "insertOrUpdateBet");
-            jest.spyOn(tempBetsRepository, "findOne");
-
-            // act
-            await bot.insertOrUpdateBetForSmartBot(botPlayer, chance.pickone(bot.equalOpts), 20);
-
-            // assert
-            expect(TableGameBot.prototype.insertOrUpdateBet).toHaveBeenCalled();
         });
     });
 });
