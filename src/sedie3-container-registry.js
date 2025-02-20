@@ -4,7 +4,7 @@ import { Table } from "sc-game-base";
 import GameResultServiceConsumer from "./consumers/game-result-service-consumer";
 import PlaceBetConsumer from "./consumers/sedie3-place-bet-consumer";
 import SeDie3SettleGameRoundConsumer from "./consumers/sedie3-settle-game-round-consumer";
-import { SeDie3Bot, SeDie3GameCron } from "./crons";
+import { SeDie3Bot, SeDie3GameCron, SeDie3ProcessBetQueue } from "./crons";
 import { SeDie3BetLogs, SeDie3Bets, SeDie3Results, SeDie3Rounds, SeDie3TmpBets } from "./models";
 import SocketRouter from "./routers/socket-router";
 
@@ -39,6 +39,7 @@ export default class SeDieContainerRegistry extends Table.TableContainerRegistry
         this.container.register({
             bot: asClass(SeDie3Bot).singleton(),
             gameCron: asClass(SeDie3GameCron).singleton().proxy(),
+            processBetQueue: asClass(SeDie3ProcessBetQueue).singleton().proxy(),
         });
     }
 
